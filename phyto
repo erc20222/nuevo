@@ -1,0 +1,252 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import random
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import networkx as nx
+
+# Fijar la semilla para la generación de códigos de Huffman
+random.seed(0)
+
+class HuffmanNode:
+    def __init__(self, char, frequency):
+        self.char = char
+        self.frequency = frequency
+        self.left = None
+        self.right = None
+
+    def __lt__(self, other):
+        return self.frequency < other.frequency
+
+def build_huffman_tree(frequencies):
+    nodos_ordenados = sorted([HuffmanNode(char, freq) for char, freq in frequencies.items()])
+
+    while len(nodos_ordenados) > 1:
+        left = nodos_ordenados.pop(0)
+        right = nodos_ordenados.pop(0)
+        parent = HuffmanNode('*', left.frequency + right.frequency)
+        parent.left = left
+        parent.right = right
+        nodos_ordenados.append(parent)
+        nodos_ordenados.sort()
+    
+    return nodos_ordenados[0]
+
+def generate_codes(root, code, codes):
+    if root is None:
+        return
+    
+    if root.char != '*':
+        codes[root.char] = code
+    else:
+        generate_codes(root.left, code + '0', codes)
+        generate_codes(root.right, code + '1', codes)
+
+def compress_file(input_file, output_file):
+    with open(input_file, 'r') as fin:
+        data = fin.read()
+        frequencies = defaultdict(int)
+        for char in data:
+            frequencies[char] += 1
+
+    root = build_huffman_tree(frequencies)
+    codes = {}
+    generate_codes(root, '', codes)
+    encoded_string = ''.join(codes[char] for char in data)
+  
+    with open(output_file, 'wb') as fout:
+        # Escribir la tabla de códigos Huffman en el archivo comprimido
+        for char, code in codes.items():
+            fout.write(bytes(f"{char} {code}\n", 'utf-8'))
+        fout.write(b"=====\n")
+
+        # Escribir los datos comprimidos en el archivo comprimido
+        fout.write(bytes(encoded_string, 'utf-8'))
+
+    return codes, encoded_string, root
+
+def decompress_file(input_file, codes, encoded_string):
+    decoded_string = ""
+    # invertir lectura de codigos y caracter para decodificar el mensaje
+    inverse_codes = {codigo: caracter for caracter, codigo in codes.items()}
+
+    codigo_actual = ""
+    # Decodificar
+    for digito in encoded_string:
+        codigo_actual += digito
+        if codigo_actual in inverse_codes:
+            decoded_string += inverse_codes[codigo_actual]
+            codigo_actual = ""
+
+    return decoded_string
+
+def select_input_file(entry):
+    file_path = filedialog.askopenfilename(title="Seleccionar archivo")
+    entry.delete(0, tk.END)
+    entry.insert(0, file_path)
+
+def select_output_file(entry):
+    file_path = filedialog.asksaveasfilename(title="Guardar archivo", defaultextension=".bin")
+    entry.delete(0, tk.END)
+    entry.insert(0, file_path)
+
+def compress():
+    input_file = input_file_entry.get()
+    output_file = output_file_entry.get()
+
+    if not input_file or not output_file:
+        messagebox.showerror("Error", "Por favor seleccione un archivo de entrada y salida.")
+        return
+
+    try:
+        codes, encoded_string, root = compress_file(input_file, output_file)
+        messagebox.showinfo("Completado", "Archivo comprimido exitosamente.")
+
+        # Mostrar la tabla de códigos Huffman y los datos comprimidos en una ventana de texto
+        mostrar_resultados("Resultados de Compresión", codes, encoded_string)
+        mostrar_arbol_huffman(root)
+    
+    except Exception as e:
+        messagebox.showerror("Error", f"Ocurrió un error al comprimir el archivo: {e}")
+
+def mostrar_resultados(title, codes, result_string):
+    # Crear una nueva ventana para mostrar la tabla de códigos y los datos comprimidos
+    results_window = tk.Toplevel()
+    results_window.title(title)
+
+    # Crear un widget Text para mostrar la tabla de códigos y los datos comprimidos
+    results_text = tk.Text(results_window)
+    results_text.pack()
+
+    results_text.insert(tk.END, "Tabla de Códigos Huffman:\n")
+    results_text.insert(tk.END, "CARACTER\t\tCÓDIGO HUFFMAN\n")
+    results_text.insert(tk.END, "-----------------------------\n")
+    for char, code in codes.items():
+        results_text.insert(tk.END, f"{char}\t\t{code}\n")
+
+    # Mostrar los datos comprimidos
+    results_text.insert(tk.END, "\nDatos Comprimidos:\n")
+    results_text.insert(tk.END, result_string)
+
+    input_file = input_file_entry.get()
+    output_file = output_file_entry.get()
+    codes, encoded_string, _ = compress_file(input_file, output_file)
+    decoded_string = decompress_file(input_file, codes, encoded_string)
+    send_button = tk.Button(results_window, text="Descomprimir datos comprimidos", command=lambda: mostrar_resultados_des("Resultados de Descomprensión", codes, decoded_string))
+    send_button2 = tk.Button(results_window, text="Ingresar y descomprimir código binario a partir de la biblioteca Huffman generada", command=lambda: descomprimir_codigo_binario("Descomprensión de código", codes))
+    send_button.pack()
+    send_button2.pack()
+
+def mostrar_resultados_des(title, codes, result_string):
+    results_window = tk.Toplevel()
+    results_window.title(title)
+    results_text = tk.Text(results_window)
+    results_text.pack()
+
+    if title == "Resultados de Descomprensión":
+        results_text.insert(tk.END, "\nDatos Descomprimidos:\n")
+    else:
+        results_text.insert(tk.END, "\nMensaje Decodificado:\n")
+    results_text.insert(tk.END, result_string)
+
+    input_file = input_file_entry.get()
+    output_file = output_file_entry.get()
+    codes, encoded_string, _ = compress_file(input_file, output_file)
+    decoded_string = decompress_file(input_file, codes, encoded_string)
+
+def descomprimir_codigo_binario(title, codes):
+    def descomprimir():
+        binary_code = binary_code_entry.get()
+        input_file = input_file_entry.get()
+        decoded_string = decompress_file(input_file, codes, binary_code)
+        results_text.delete(1.0, tk.END)
+        results_text.insert(tk.END, "\nDatos Descomprimidos:\n")
+        results_text.insert(tk.END, decoded_string)
+
+    results_window = tk.Toplevel()
+    results_window.title(title)
+
+    binary_code_label = tk.Label(results_window, text="Código Binario:")
+    binary_code_label.pack()
+    
+    binary_code_entry = tk.Entry(results_window, width=50)
+    binary_code_entry.pack()
+    
+    decompress_button = tk.Button(results_window, text="Descomprimir", command=descomprimir)
+    decompress_button.pack()
+
+    results_text = tk.Text(results_window)
+    results_text.pack()
+
+def mostrar_arbol_huffman(root):
+    def plot_huffman_tree(node, pos={}, x=0, y=0, layer=1):
+        if node is not None:
+            pos[node] = (x, y)
+            plot_huffman_tree(node.left, pos, x - 1 / layer, y - 1, layer + 1)
+            plot_huffman_tree(node.right, pos, x + 1 / layer, y - 1, layer + 1)
+    
+    def draw_tree():
+        pos = {}
+        plot_huffman_tree(root, pos)
+
+        G = nx.DiGraph()
+        labels = {}
+        freq_labels = {}
+        
+        for node in pos:
+            freq_labels[node] = f"{node.char}\n({node.frequency})"
+            if node.left is not None:
+                G.add_edge(node, node.left)
+                labels[(node, node.left)] = '0'
+            if node.right is not None:
+                G.add_edge(node, node.right)
+                labels[(node, node.right)] = '1'
+        
+        plt.figure(figsize=(8, 6))
+        nx.draw(G, pos, with_labels=True, labels=freq_labels, node_size=2000, node_color="skyblue", font_size=10, font_weight="bold", arrowsize=20)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_color='red')
+        plt.title("Árbol de Huffman")
+        plt.show()
+
+    draw_tree()
+
+# Crear ventana principal
+root = tk.Tk()
+root.title("Compresor y Descompresor Huffman")
+root.geometry("500x450")
+root.configure(bg="#f5f5f5")
+
+# Crear frame principal
+main_frame = tk.Frame(root, bg="#f5f5f5")
+main_frame.pack(pady=20)
+
+# Crear y colocar widgets para la compresión con fuentes personalizadas
+font_title = ("Helvetica", 16, "bold")
+font_label = ("Helvetica", 12)
+font_button = ("Helvetica", 12, "bold")
+
+title_label = tk.Label(main_frame, text="Compresor y Descompresor Huffman", font=font_title, bg="#f5f5f5")
+title_label.pack(pady=10)
+
+input_file_label = tk.Label(main_frame, text="Archivo de Entrada:", font=font_label, bg="#f5f5f5")
+input_file_label.pack(anchor="w", padx=20)
+
+input_file_entry = tk.Entry(main_frame, width=50)
+input_file_entry.pack(pady=5)
+
+input_file_button = tk.Button(main_frame, text="Seleccionar Archivo", font=font_button, command=lambda: select_input_file(input_file_entry), bg="#4CAF50", fg="white")
+input_file_button.pack(pady=5)
+
+output_file_label = tk.Label(main_frame, text="Archivo de Salida:", font=font_label, bg="#f5f5f5")
+output_file_label.pack(anchor="w", padx=20)
+
+output_file_entry = tk.Entry(main_frame, width=50)
+output_file_entry.pack(pady=5)
+
+output_file_button = tk.Button(main_frame, text="Seleccionar Archivo", font=font_button, command=lambda: select_output_file(output_file_entry), bg="#4CAF50", fg="white")
+output_file_button.pack(pady=5)
+
+compress_button = tk.Button(main_frame, text="Comprimir", font=font_button, command=compress, bg="#2196F3", fg="white")
+compress_button.pack(pady=20)
+
+root.mainloop()
