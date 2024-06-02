@@ -1,0 +1,117 @@
+#include <iostream>
+#include <conio.h>
+#include <functional>
+#include <string>
+#include "Clase.h"
+
+using namespace std;
+
+
+
+void RellenarDatos(Tako<int, string>* lst)
+{
+    system("cls");
+    cout << "-----------RELLENA LOS DATOS DEL CLIENTE-----------" << endl;
+    string nombre;
+    int telefono;
+    int numero;
+    cout << "\tNombre: "; cin >> nombre;
+    cout << "\tTelefono: "; cin >> telefono;
+    do {
+        cout << "\tNumero de mesa (no mayor al nro 10): "; cin >> numero;
+
+    } while (numero > 10 || numero< 1);
+
+
+    lst->Final(nombre, telefono, numero);
+    system("pause>0");
+}
+
+void numeroMesas_Disponibles(Tako<int, string>* lst) {
+
+    system("cls");
+    int mesas = 10;
+    lst->setmesadisponible(mesas);
+    cout << "-----------MESAS DISPONIBLES-----------" << endl;
+
+    for (int i = 0; i < lst->longitud(); i++)
+    {
+        mesas--;
+    }
+    if (mesas > 0) {
+        cout << "\n\tCantidad de mesas disponibles: " << mesas << endl;
+
+        cout << "Mesas ocupadas: " << endl;
+            lst->NumeroMesa();
+        
+    }
+    if (mesas <= 0)
+    {
+        cout << "\n No hay mesas disponibles" << endl;
+
+    }
+    system("pause>0");
+}
+void probando(Tako<int, string>* lst) {
+    system("cls");
+    lst->comparar();
+    
+    system("pause>0");
+}
+
+void mostrarHistorial(Tako<int, string>* lst)
+{
+    system("cls");
+    cout << "--------Historial de clientes--------" << endl;
+    lst->mostrarLista();
+    system("pause>0");
+}
+
+void Opcion(short opc, Tako<int, string>* lst)
+{
+    switch (opc)
+    {
+    case 1:
+        RellenarDatos(lst);
+        break;
+    case 2: 
+        mostrarHistorial(lst);
+        break;
+    case 3:
+        numeroMesas_Disponibles(lst);
+        break;
+    case 4:
+        probando(lst); break;
+    default:
+        cout << "Gracias por usar nuestra aplicacion!!" << endl;
+    }
+}
+
+short Menu()
+{
+    short opcion;
+    system("cls");
+    cout << "-----------MENU---------" << endl;
+    cout << "1. Registrar cliente" << endl;
+    cout << "2. Mostrar historial de clientes " << endl;
+    cout << "3. Mostrar cantidad de mesas disponibles" << endl;
+    cout << "4. Mostrar las mesas ocupada" << endl;
+    cout << "5. Salir" << endl;
+    cout << "Opcion escogida: "; cin >> opcion;
+
+    return opcion;
+}
+int main()
+{
+    short opcion;
+    Tako<int, string>* lst = new Tako<int, string>();
+    do {
+        opcion = Menu();
+        Opcion(opcion, lst);
+    } while (opcion != 5);
+    delete lst;
+
+
+    char car = _getch();
+    return 0;
+}
